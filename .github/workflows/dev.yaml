@@ -1,0 +1,61 @@
+name: Deploy to All-Inkl
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Deploy to All-Inkl
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Deploy to All-Inkl (Attempt 1)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        continue-on-error: true
+        id: deploy1
+        with:
+          server: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          password: ${{ secrets.DEV_PASSWORD }}
+          protocol: ftp
+          port: 21
+          server-dir: /
+          timeout: 300000
+
+      - name: Wait before retry
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to All-Inkl (Attempt 2)
+        if: steps.deploy1.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        continue-on-error: true
+        id: deploy2
+        with:
+          server: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          password: ${{ secrets.DEV_PASSWORD }}
+          protocol: ftp
+          port: 21
+          server-dir: /
+          timeout: 300000
+
+      - name: Wait before final retry
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to All-Inkl (Final Attempt)
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          password: ${{ secrets.DEV_PASSWORD }}
+          protocol: ftp
+          port: 21
+          server-dir: /
+          timeout: 300000
